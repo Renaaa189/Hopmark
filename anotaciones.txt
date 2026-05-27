@@ -1,0 +1,1217 @@
+
+El proyecto consta de una base de datos que debe ser para almacenar estudiantes, aquellos estudiantes asistiran a 3 diferentes carreras:
+
+Medicina, en la UBA.
+
+Ingeniería en sistemas, en la UTN. 
+
+y Economía(Contador Público), en la UADE. 
+
+El programa deberá ser capaz de asignar materias a los alumnos de distintas carreas y de
+diferentes años, y deberá de tener registro de años anteriores con lógica, es decir, Un 
+alumno de 3er año en la carrera de medicina no puede:
+
+- Tener desaprobadas materias de años anteriores.
+
+- Tener materias no correspondientes a la carrera.
+
+- No tener registro de sus años anteriores.
+
+- Tener materias de años próximos/anteriores, se supone que deberá tener materias de ese mismo año.
+
+Y... un detalle mas, por cada nota de cada materia los alumnos se les dará un 
+CONEJO(ya se, raro) la edad o tipo de conejo dependerá de la calificación de cada materia, si la nota de
+la materia es 1, 2 o 3 el conejo asignado será un conejo adulto, si la calificación de la materia es de 4,5,6 o 7, el 
+conejo asignado será uno joven y si el conejo asignado es de 8, 9 o 10 el conejo que se le asignara será un Conejo Bebé.
+
+Este proyecto requerirá de una estructura donde habrán dos carpetas principales, la api(usaremos javaScript) y
+el client(React) así que bueno, yo ya tengo casi todo del proyecto pero me gustaría volver a empezar, así que decime que 
+carpetas spn necesarias.
+
+
+/proyecto-universidad
+│
+├── api/           ← Backend Node/Express/Sequelize
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── db.js
+│   │   ├── models/
+│   │   │   ├── Estudiante.js
+│   │   │   ├── Carrera.js
+│   │   │   ├── Materia.js
+│   │   │   ├── Estudiante_Carrera.js
+│   │   │   ├── Estudiante_Materia.js
+│   │   │   ├── Conejo.js
+│   │   │   └── TipoConejo.js
+│   │   ├── controllers/
+│   │   │   ├── estudianteController.js
+│   │   │   ├── carreraController.js
+│   │   │   ├── materiaController.js
+│   │   │   ├── inscripcionController.js
+│   │   │   └── conejoController.js
+│   │   ├── services/         ← lógica compleja (asignaciones, validaciones)
+│   │   │   ├── asignacionService.js
+│   │   │   └── conejoService.js
+│   │   ├── middlewares/
+│   │   │   ├── validarMateria.js
+│   │   │   └── errorHandler.js
+│   │   ├── routes/
+│   │   │   ├── estudianteRoutes.js
+│   │   │   ├── carreraRoutes.js
+│   │   │   ├── materiaRoutes.js
+│   │   │   ├── inscripcionRoutes.js
+│   │   │   └── conejoRoutes.js
+│   │   ├── utils/
+│   │   │   └── helpers.js
+│   │   ├── seeders/
+│   │   │   ├── carrerasSeeder.js
+│   │   │   ├── materiasSeeder.js
+│   │   │   └── estudiantesSeeder.js
+│   │   ├── app.js
+│   │   └── server.js
+│   │
+│   ├── package.json
+│   └── .env
+│
+├── client/        ← Frontend React
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── services/    ← Axios API service
+│   │   ├── context/
+│   │   ├── utils/
+│   │   └── App.jsx
+│   ├── public/
+│   └── package.json
+│
+└── README.md
+
+
+--------------------------------------------------------------------
+api/models:
+
+Carrera:
+module.exports = (sequelize, DataTypes) => {
+  return sequelize.define('Carrera', {
+    id_carrera: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    nombre: { type: DataTypes.STRING(100), allowNull: false },
+    duracion: { type: DataTypes.INTEGER, allowNull: false },
+    id_universidad: { type: DataTypes.INTEGER, allowNull: false }
+  }, {
+    tableName: 'Carrera',
+    timestamps: false
+  });
+};
+
+
+Conejo:
+// api/models/Conejo.js
+module.exports = (sequelize, DataTypes) => {
+  const Conejo = sequelize.define('Conejo', {
+    id_conejo: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    id_estudiante: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    id_materia: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    id_tipo: { // 👈 clave foránea hacia TipoConejo
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    anio_cursada: {
+      type: DataTypes.INTEGER
+    },
+    nota_origen: {
+      type: DataTypes.FLOAT
+    },
+    fecha_asignacion: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    }
+  }, {
+    tableName: 'conejos',
+    timestamps: false
+  });
+
+  return Conejo;
+};
+
+
+Correlatividad:
+module.exports = (sequelize, DataTypes) => {
+return sequelize.define('Correlatividad', {
+id_materia: { type: DataTypes.INTEGER, primaryKey: true },
+id_materia_correlativa: { type: DataTypes.INTEGER, primaryKey: true }
+}, {
+tableName: 'Correlatividad'
+});
+};  
+
+Estudiante_Carrera:
+const { Model, DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+class Estudiante_Carrera extends Model {}
+
+Estudiante_Carrera.init({
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  id_estudiante: { type: DataTypes.INTEGER, allowNull: false },
+  id_carrera: { type: DataTypes.INTEGER, allowNull: false },
+  regularidad: { type: DataTypes.STRING, defaultValue: 'Regular' },
+  anio_actual: { type: DataTypes.INTEGER, defaultValue: 1 }
+}, {
+  sequelize,
+  modelName: 'Estudiante_Carrera',
+  tableName: 'estudiante_carreras',
+  timestamps: false
+});
+
+module.exports = Estudiante_Carrera;
+
+
+Estudiante_Materia:
+module.exports = (sequelize, DataTypes) => {
+  return sequelize.define('Estudiante_Materia', {
+    id_estudiante: { type: DataTypes.INTEGER, primaryKey: true },
+    id_materia: { type: DataTypes.INTEGER, primaryKey: true },
+    anio_cursada: { type: DataTypes.INTEGER, allowNull: false },
+    estado_regularidad: { type: DataTypes.ENUM('Regular','Libre','Condicional'), allowNull: false },
+    nota_parcial_1: { type: DataTypes.INTEGER },
+    nota_parcial_2: { type: DataTypes.INTEGER },
+    nota_final: { type: DataTypes.INTEGER },
+    estado_materia: { type: DataTypes.ENUM('Promocionada','Aprobada','Reprobada','Pendiente'), defaultValue: 'Pendiente' }
+  }, {
+    tableName: 'Estudiante_Materia',
+    timestamps: false
+  });
+};
+
+
+Estudiante:
+const { Model, DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+class Estudiante extends Model {}
+
+Estudiante.init({
+  id_estudiante: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  nombre: { type: DataTypes.STRING, allowNull: false },
+  apellido: { type: DataTypes.STRING, allowNull: false },
+  dni: { type: DataTypes.STRING, allowNull: false, unique: true },
+  direccion: { type: DataTypes.STRING },
+  telefono: { type: DataTypes.STRING }
+}, {
+  sequelize,
+  modelName: 'Estudiante',
+  tableName: 'estudiantes',
+  timestamps: false
+});
+
+module.exports = Estudiante;
+
+
+ Materia:
+module.exports = (sequelize, DataTypes) => {
+  return sequelize.define('Materia', {
+    id_materia: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    nombre: { type: DataTypes.STRING(100), allowNull: false },
+    anio_cursada: { type: DataTypes.INTEGER, allowNull: false },
+    tipo: { type: DataTypes.ENUM('Teorica','Practica','Integradora'), allowNull: false },
+    id_carrera: { type: DataTypes.INTEGER, allowNull: false }
+  }, {
+    tableName: 'Materia',
+    timestamps: false
+  });
+};
+
+
+Tipo_Conejo:
+// api/models/TipoConejo.js
+module.exports = (sequelize, DataTypes) => {
+  const TipoConejo = sequelize.define('TipoConejo', {
+    id_tipo: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    nombre: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: true
+    },
+    descripcion: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    }
+  }, {
+    tableName: 'tipo_conejo',
+    timestamps: false
+  });
+
+  return TipoConejo;
+};
+
+Universidad:
+module.exports = (sequelize, DataTypes) => {
+  return sequelize.define('Universidad', {
+    id_universidad: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    nombre: { type: DataTypes.STRING(100), allowNull: false },
+    telefono: { type: DataTypes.STRING(20) },
+    direccion: { type: DataTypes.STRING(150) }
+  }, {
+    tableName: 'Universidad',
+    timestamps: false
+  });
+};
+
+
+y por ultimo mi index de la carpeta models:
+// api/models/index.js
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+// --------- Importación de modelos ---------
+const Estudiante = require('./Estudiante');
+const Estudiante_Carrera = require('./Estudiante_Carrera');
+const Materia = require('./Materia')(sequelize, DataTypes);
+const Universidad = require('./Universidad')(sequelize, DataTypes);
+const Carrera = require('./Carrera')(sequelize, DataTypes);
+const Estudiante_Materia = require('./Estudiante_Materia')(sequelize, DataTypes);
+const TipoConejo = require('./TipoConejo')(sequelize, DataTypes);
+const Conejo = require('./Conejo')(sequelize, DataTypes);
+
+// --------- Asociaciones ---------
+
+// Universidad - Carrera
+Universidad.hasMany(Carrera, { foreignKey: 'id_universidad', as: 'carreras' });
+Carrera.belongsTo(Universidad, { foreignKey: 'id_universidad', as: 'universidad' });
+
+// Carrera - Materia
+Carrera.hasMany(Materia, { foreignKey: 'id_carrera', as: 'materias' });
+Materia.belongsTo(Carrera, { foreignKey: 'id_carrera', as: 'carrera' });
+
+// Estudiante - Estudiante_Carrera
+Estudiante.hasMany(Estudiante_Carrera, { foreignKey: 'id_estudiante', as: 'carreras' });
+Estudiante_Carrera.belongsTo(Estudiante, { foreignKey: 'id_estudiante', as: 'estudiante' });
+Estudiante_Carrera.belongsTo(Carrera, { foreignKey: 'id_carrera', as: 'carrera' });
+
+// Estudiante <-> Materia (muchos a muchos)
+Estudiante.belongsToMany(Materia, {
+  through: Estudiante_Materia,
+  foreignKey: 'id_estudiante',
+  otherKey: 'id_materia',
+  as: 'materiasInscripto'
+});
+Materia.belongsToMany(Estudiante, {
+  through: Estudiante_Materia,
+  foreignKey: 'id_materia',
+  otherKey: 'id_estudiante',
+  as: 'estudiantesInscripto'
+});
+
+// Relación directa con tabla intermedia
+Estudiante.hasMany(Estudiante_Materia, { foreignKey: 'id_estudiante', as: 'est_materias' });
+Estudiante_Materia.belongsTo(Estudiante, { foreignKey: 'id_estudiante', as: 'estudiante' });
+Materia.hasMany(Estudiante_Materia, { foreignKey: 'id_materia', as: 'est_materias' });
+Estudiante_Materia.belongsTo(Materia, { foreignKey: 'id_materia', as: 'materia' });
+
+// --------- Relaciones Conejos ---------
+Estudiante.hasMany(Conejo, { foreignKey: 'id_estudiante', as: 'conejos' });
+Conejo.belongsTo(Estudiante, { foreignKey: 'id_estudiante', as: 'estudiante' });
+
+Materia.hasMany(Conejo, { foreignKey: 'id_materia', as: 'conejos' });
+Conejo.belongsTo(Materia, { foreignKey: 'id_materia', as: 'materia' });
+
+TipoConejo.hasMany(Conejo, { foreignKey: 'id_tipo', as: 'conejos' });
+Conejo.belongsTo(TipoConejo, { foreignKey: 'id_tipo', as: 'tipo' });
+
+// --------- Exportar ---------
+module.exports = {
+  sequelize,
+  Estudiante,
+  Estudiante_Carrera,
+  Materia,
+  Universidad,
+  Carrera,
+  Estudiante_Materia,
+  TipoConejo,
+  Conejo
+};
+
+
+ en mi carpeta controllers:
+AlumnoController:
+// api/controllers/alumnoController.js
+const { Estudiante, Estudiante_Carrera, Estudiante_Materia, Materia, sequelize } = require('../models');
+
+async function generarAlumnos() {
+  try {
+    const nombres = ["Juan","María","Pedro","Lucía","Carlos","Ana","Miguel","Sofía","Jorge","Camila","Andrés","Valentina","Martín","Julieta","Agustín","Florencia","Nicolás","Bruno","Paula","Sebastián"];
+    const apellidos = ["García","Rodríguez","López","Pérez","Martínez","Gómez","Fernández","Díaz","Torres","Ruiz","Castro","Vázquez","Domínguez","Sosa","Navarro","Suárez","Romero","Herrera","Benítez","Molina"];
+    const calles = ["San Martín","Belgrano","Rivadavia","Mitre","Lavalle","Moreno","25 de Mayo","Urquiza","Güemes","Independencia","Sarmiento","Perón","Alsina","Córdoba","Santa Fe"];
+
+    const alumnos = [];
+    const relacionesCarreras = [];
+
+    let id_carrera = 1; // 1 = Ingeniería
+    let count_ing = 0, count_med = 0, count_eco = 0;
+
+    for (let i = 1; i <= 2000; i++) {
+      const nombre = nombres[Math.floor(Math.random() * nombres.length)];
+      const apellido = apellidos[Math.floor(Math.random() * apellidos.length)];
+      const direccion = `${calles[Math.floor(Math.random() * calles.length)]} ${Math.floor(Math.random() * 4000) + 1}`;
+      const telefono = `11-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const dni = (30000000 + i).toString();
+
+      // asignar carrera
+      if (count_ing < 700) {
+        id_carrera = 1; // Ingeniería
+        count_ing++;
+      } else if (count_med < 700) {
+        id_carrera = 2; // Medicina
+        count_med++;
+      } else {
+        id_carrera = 3; // Economía
+        count_eco++;
+      }
+
+      alumnos.push({ dni, nombre, apellido, direccion, telefono });
+    }
+
+    // Insertar estudiantes
+    const estudiantesInsertados = await Estudiante.bulkCreate(alumnos, { returning: true });
+
+    // Crear relaciones estudiante_carrera
+    for (const est of estudiantesInsertados) {
+      let id_carrera_asignada;
+
+      if (est.id_estudiante <= 700) id_carrera_asignada = 1;
+      else if (est.id_estudiante <= 1400) id_carrera_asignada = 2;
+      else id_carrera_asignada = 3;
+
+      const anio_actual = id_carrera_asignada === 2
+        ? Math.floor(1 + Math.random() * 6) // Medicina (6 años)
+        : Math.floor(1 + Math.random() * 5); // Ingeniería / Economía (5 años)
+
+      relacionesCarreras.push({
+        id_estudiante: est.id_estudiante,
+        id_carrera: id_carrera_asignada,
+        regularidad: 'Regular',
+        anio_actual
+      });
+    }
+
+    await Estudiante_Carrera.bulkCreate(relacionesCarreras);
+
+    console.log("✅ Se insertaron 2000 alumnos y se asignaron carrera + año correctamente.");
+
+  } catch (error) {
+    console.error("❌ Error al insertar alumnos y carreras:", error);
+  }
+}
+
+async function obtenerAlumnoPorDni(req, res) {
+  try {
+    const { dni } = req.params;
+    const alumno = await Estudiante.findOne({ where: { dni } });
+
+    if (!alumno) return res.status(404).json({ mensaje: 'Alumno no encontrado' });
+
+    res.json({
+      id: alumno.id_estudiante || alumno.id || null,
+      dni: alumno.dni,
+      nombre: alumno.nombre,
+      apellido: alumno.apellido,
+      direccion: alumno.direccion,
+      telefono: alumno.telefono,
+    });
+  } catch (error) {
+    console.error('❌ Error en obtenerAlumnoPorDni:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+async function obtenerAlumnoConMaterias(req, res) {
+  try {
+    const { dni } = req.params;
+
+    const alumno = await Estudiante.findOne({
+      where: { dni },
+      include: [
+        {
+          model: Estudiante_Materia,
+          as: 'est_materias',
+          include: [
+            {
+              model: Materia,
+              as: 'materia',
+              attributes: ['id_materia', 'nombre', 'anio_cursada']
+            }
+          ]
+        }
+      ],
+      order: [[{ model: Estudiante_Materia, as: 'est_materias' }, 'anio_cursada', 'ASC']]
+    });
+
+    if (!alumno) return res.status(404).json({ mensaje: 'Alumno no encontrado' });
+
+    const materias = (alumno.est_materias || []).map(em => ({
+      id_materia: em.id_materia,
+      materia: em.materia ? em.materia.nombre : null,
+      anio_cursada: em.anio_cursada,
+      estado_regularidad: em.estado_regularidad,
+      nota_parcial_1: em.nota_parcial_1,
+      nota_parcial_2: em.nota_parcial_2,
+      nota_final: em.nota_final,
+      estado_materia: em.estado_materia
+    }));
+
+    res.json({
+      alumno: {
+        id: alumno.id_estudiante || alumno.id || null,
+        dni: alumno.dni,
+        nombre: alumno.nombre,
+        apellido: alumno.apellido,
+        direccion: alumno.direccion,
+        telefono: alumno.telefono
+      },
+      materias
+    });
+
+  } catch (error) {
+    console.error('❌ Error en obtenerAlumnoConMaterias:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+module.exports = { generarAlumnos, obtenerAlumnoPorDni, obtenerAlumnoConMaterias };
+
+CarreraController:
+const { Universidad, Carrera, Materia } = require('../models');
+
+async function cargarCarreras() {
+  try {
+    // UNIVERSIDADES
+    const utn = await Universidad.create({ nombre: 'UTN', telefono: '011-1234-5678', direccion: 'Av. Medrano 951, Buenos Aires' });
+    const uba = await Universidad.create({ nombre: 'UBA', telefono: '011-4321-8765', direccion: 'Av. Córdoba 2100, Buenos Aires' });
+    const uade = await Universidad.create({ nombre: 'UADE', telefono: '011-4000-1200', direccion: 'Lima 775, Buenos Aires' });
+
+    // CARRERAS
+    const sis = await Carrera.create({ nombre: 'Ingeniería en Sistemas', duracion: 5, id_universidad: utn.id_universidad });
+    const med = await Carrera.create({ nombre: 'Medicina', duracion: 6, id_universidad: uba.id_universidad });
+    const eco = await Carrera.create({ nombre: 'Economía / Contador Público', duracion: 5, id_universidad: uade.id_universidad });
+
+    // ✅ INGENIERÍA EN SISTEMAS (PLAN REAL)s
+    await Materia.bulkCreate([
+      // Año 1
+      { nombre: 'Sistemas y Procesos de Negocio', anio_cursada: 1, tipo: 'Teorica', id_carrera: sis.id_carrera },
+
+      // Año 2
+      { nombre: 'Análisis Matemático II', anio_cursada: 2, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Física II', anio_cursada: 2, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Ingeniería y Sociedad', anio_cursada: 2, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Inglés II', anio_cursada: 2, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Sintaxis y Semántica de los Lenguajes', anio_cursada: 2, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Paradigmas de Programación', anio_cursada: 2, tipo: 'Practica', id_carrera: sis.id_carrera },
+      { nombre: 'Sistemas Operativos', anio_cursada: 2, tipo: 'Practica', id_carrera: sis.id_carrera },
+      { nombre: 'Análisis de Sistemas de Información', anio_cursada: 2, tipo: 'Integradora', id_carrera: sis.id_carrera },
+
+      // Año 3
+      { nombre: 'Probabilidad y Estadística', anio_cursada: 3, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Economía', anio_cursada: 3, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Bases de Datos', anio_cursada: 3, tipo: 'Practica', id_carrera: sis.id_carrera },
+      { nombre: 'Desarrollo de Software', anio_cursada: 3, tipo: 'Practica', id_carrera: sis.id_carrera },
+      { nombre: 'Comunicación de Datos', anio_cursada: 3, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Análisis Numérico', anio_cursada: 3, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Diseño de Sistemas de Información', anio_cursada: 3, tipo: 'Integradora', id_carrera: sis.id_carrera },
+
+      // Año 4
+      { nombre: 'Legislación', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Ingeniería y Calidad de Software', anio_cursada: 4, tipo: 'Integradora', id_carrera: sis.id_carrera },
+      { nombre: 'Redes de Datos', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Investigación Operativa', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Simulación', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Tecnologías para la automatización', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Administración de Sistemas de Información', anio_cursada: 4, tipo: 'Teorica', id_carrera: sis.id_carrera },
+
+      // Año 5
+      { nombre: 'Inteligencia Artificial', anio_cursada: 5, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Ciencia de Datos', anio_cursada: 5, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Sistemas de Gestión', anio_cursada: 5, tipo: 'Integradora', id_carrera: sis.id_carrera },
+      { nombre: 'Gestión Gerencial', anio_cursada: 5, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Seguridad en los Sistemas de Información', anio_cursada: 5, tipo: 'Teorica', id_carrera: sis.id_carrera },
+      { nombre: 'Proyecto Final', anio_cursada: 5, tipo: 'Practica', id_carrera: sis.id_carrera },
+    ]);
+
+    // ✅ MEDICINA (PLAN REAL)
+    await Materia.bulkCreate([
+      // Año 1
+      { nombre: 'Química', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Introducción al Conocimiento de la Sociedad y el Estado', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Introducción al Pensamiento Científico', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Matemática', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Física e Introducción a la Biofísica', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Biología e Introducción a la Biología Celular', anio_cursada: 1, tipo: 'Teorica', id_carrera: med.id_carrera },
+
+      // Año 2
+      { nombre: 'Anatomía', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Histología - Biología Celular - Embriología - Genética', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Salud Mental', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Bioética I', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Medicina Familiar I', anio_cursada: 2, tipo: 'Integradora', id_carrera: med.id_carrera },
+      { nombre: 'Química Biológica', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Fisiología y Biofísica', anio_cursada: 2, tipo: 'Teorica', id_carrera: med.id_carrera },
+
+      // Año 3
+      { nombre: 'Microbiología - Parasitología - Inmunología', anio_cursada: 3, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Patología I', anio_cursada: 3, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Farmacología I', anio_cursada: 3, tipo: 'Teorica', id_carrera: med.id_carrera },
+
+      // Año 4
+      { nombre: 'Medicina 1 (Semiología - Fisiopatología)', anio_cursada: 4, tipo: 'Integradora', id_carrera: med.id_carrera },
+      { nombre: 'Patología II', anio_cursada: 4, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Farmacología II', anio_cursada: 4, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Salud Pública I', anio_cursada: 4, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Bioética II', anio_cursada: 4, tipo: 'Teorica', id_carrera: med.id_carrera },
+
+      // Año 5
+      { nombre: 'Medicina 2 (Medicina Interna)', anio_cursada: 5, tipo: 'Integradora', id_carrera: med.id_carrera },
+      { nombre: 'Nutrición', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Diagnóstico por Imágenes', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Dermatología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Infectología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Neumonología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Neurología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Cirugía General', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Urología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Ortopedia - Traumatología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Oftalmología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+      { nombre: 'Otorrinolaringología', anio_cursada: 5, tipo: 'Teorica', id_carrera: med.id_carrera },
+
+      // Año 6 (IAR)
+      { nombre: 'Medicina (IAR)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+      { nombre: 'Cirugía (IAR)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+      { nombre: 'Tocoginecología (IAR)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+      { nombre: 'Pediatría (IAR)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+      { nombre: 'Salud Mental (IAR)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+      { nombre: 'Atención Primaria en Áreas Progr. (Medicina Familiar II)', anio_cursada: 6, tipo: 'Practica', id_carrera: med.id_carrera },
+    ]);
+
+    // ✅ ECONOMÍA / CONTADOR (PLAN REAL)
+    await Materia.bulkCreate([
+      // Año 1
+      { nombre: 'Introducción al Pensamiento Crítico', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Introducción a la Economía', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Análisis Matemático I', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración I', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Derecho I', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Estructura Económica Territorial', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Análisis Matemático II', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Contabilidad I', anio_cursada: 1, tipo: 'Teorica', id_carrera: eco.id_carrera },
+
+      // Año 2
+      { nombre: 'Filosofía Política y Social', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Historia Económica Argentina y Mundial', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Estadística', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Finanzas', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Derecho II', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Economía de Empresas', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Contabilidad II', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración II', anio_cursada: 2, tipo: 'Teorica', id_carrera: eco.id_carrera },
+
+      // Año 3
+      { nombre: 'Teoría y Política Macroeconómica', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Marketing y Análisis de los Mercados', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Costos', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración III', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Derecho III', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Proyectos de Inversión', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Impuestos', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración IV', anio_cursada: 3, tipo: 'Teorica', id_carrera: eco.id_carrera },
+
+      // Año 4
+      { nombre: 'Investigación Operativa', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Contabilidad Gerencial', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración V', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Dirección General', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Simulación de Negocios', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Administración VI', anio_cursada: 4, tipo: 'Teorica', id_carrera: eco.id_carrera },
+
+      // Año 5
+      { nombre: 'Sistemas de Costos y Gestión', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Técnica Impositiva', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Estados Contables', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Sindicatura Concursal y Actuación en la Justicia', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Contabilidad y Presupuesto en Actividades Diferenciadas', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Auditoría', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+      { nombre: 'Contabilidad y Presupuesto en el Sector Público', anio_cursada: 5, tipo: 'Teorica', id_carrera: eco.id_carrera },
+    ]);
+
+    console.log('✅ Universidades, carreras y materias cargadas correctamente.');
+  } catch (err) {
+    console.error('❌ Error al cargar carreras:', err);
+  }
+}
+
+module.exports = { cargarCarreras };
+
+
+ConejoController:
+// api/controllers/conejoController.js
+const { Conejo, TipoConejo, Estudiante_Materia } = require('../models');
+
+async function asignarConejosDesdeNotas() {
+  try {
+    const materiasAlumno = await Estudiante_Materia.findAll({
+      include: ['materia', 'estudiante']
+    });
+
+    for (const em of materiasAlumno) {
+      const nota = em.nota_final || 0;
+      let tipoNombre;
+
+      // Tipos de conejo según nota
+      if (nota >= 8) tipoNombre = 'Conejo Bebé';
+      else if (nota >= 4) tipoNombre = 'Conejo Joven';
+      else tipoNombre = 'Conejo Adulto';
+
+      // Buscamos o creamos el tipo de conejo
+      let tipo = await TipoConejo.findOne({ where: { nombre: tipoNombre } });
+      if (!tipo) {
+        tipo = await TipoConejo.create({ nombre: tipoNombre, descripcion: `Asignado a alumnos con nota ${nota}` });
+      }
+
+      // Insert individual en Conejo
+      await Conejo.create({
+        id_estudiante: em.id_estudiante,
+        id_materia: em.id_materia,
+        id_tipo: tipo.id_tipo,
+        anio_cursada: em.anio_cursada,
+        nota_origen: nota
+      });
+    }
+
+    console.log('✅ Se asignaron los conejos por nota correctamente.');
+  } catch (error) {
+    console.error('❌ Error asignando conejos:', error);
+  }
+}
+
+async function getConejosPorEstudiante(req, res) {
+  try {
+    const { id_estudiante } = req.params;
+    const conejos = await Conejo.findAll({ where: { id_estudiante }, include: ['materia', 'tipo'] });
+    res.json(conejos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener conejos' });
+  }
+}
+
+async function getResumenConejosPorEstudiante(req, res) {
+  try {
+    const { id_estudiante } = req.params;
+    const conejos = await Conejo.findAll({ where: { id_estudiante }, include: ['tipo'] });
+    const resumen = {};
+
+    for (const c of conejos) {
+      const tipo = c.tipo.nombre;
+      resumen[tipo] = (resumen[tipo] || 0) + 1;
+    }
+
+    res.json(resumen);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener resumen' });
+  }
+}
+
+module.exports = { asignarConejosDesdeNotas, getConejosPorEstudiante, getResumenConejosPorEstudiante };
+
+EstudianteMateriaController:
+const { Estudiante, Estudiante_Carrera, Materia, Estudiante_Materia } = require('../models');
+const { Sequelize } = require('sequelize');
+
+async function generarEstudianteMateria(req, res) {
+  try {
+    console.log("📚 Generando Estudiante_Materia...");
+
+    const estudiantes = await Estudiante.findAll();
+    const carreras = await Estudiante_Carrera.findAll();
+    const materias = await Materia.findAll();
+
+    if (!estudiantes.length || !carreras.length || !materias.length) {
+      return res?.json?.({ error: "Faltan datos básicos" }) || null;
+    }
+
+    const materiasPorCarrera = materias.reduce((acc, m) => {
+      acc[m.id_carrera] = acc[m.id_carrera] || [];
+      acc[m.id_carrera].push(m);
+      return acc;
+    }, {});
+
+    const asignaciones = [];
+
+    // ---------------------------------------------------------------------------------------
+    // 1. Cada alumno recibe materias segun su año y carrera
+    // ---------------------------------------------------------------------------------------
+    for (const est of estudiantes) {
+      const car = carreras.find(c => c.id_estudiante === est.id_estudiante);
+      if (!car) continue;
+
+      const listaMaterias = materiasPorCarrera[car.id_carrera] || [];
+
+      // materias de AÑOS <= año_actual
+      const materiasValidas = listaMaterias.filter(
+        m => m.anio_cursada <= car.anio_actual
+      );
+
+      if (materiasValidas.length === 0) continue;
+
+      for (const mat of materiasValidas) {
+        asignaciones.push({
+          id_estudiante: est.id_estudiante,
+          id_materia: mat.id_materia,
+          anio_cursada: mat.anio_cursada,
+          nota_parcial_1: Math.floor(1 + Math.random() * 10),
+          nota_parcial_2: Math.floor(1 + Math.random() * 10),
+          nota_final: Math.floor(1 + Math.random() * 10)
+        });
+      }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 2. Asegurar mínimo 23 alumnos por materia
+    // ---------------------------------------------------------------------------------------
+    const materiasAgrupadas = {};
+
+    for (const as of asignaciones) {
+      materiasAgrupadas[as.id_materia] = materiasAgrupadas[as.id_materia] || [];
+      materiasAgrupadas[as.id_materia].push(as);
+    }
+
+    for (const mat of materias) {
+      const lista = materiasAgrupadas[mat.id_materia] || [];
+
+      if (lista.length < 23) {
+        const faltan = 23 - lista.length;
+        const randomEstudiantes = estudiantes
+          .sort(() => Math.random() - 0.5)
+          .slice(0, faltan);
+
+        for (const est of randomEstudiantes) {
+          asignaciones.push({
+            id_estudiante: est.id_estudiante,
+            id_materia: mat.id_materia,
+            anio_cursada: mat.anio_cursada,
+            nota_parcial_1: Math.floor(1 + Math.random() * 10),
+            nota_parcial_2: Math.floor(1 + Math.random() * 10),
+            nota_final: Math.floor(1 + Math.random() * 10)
+          });
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 3. Insert masivo evitando duplicados
+    // ---------------------------------------------------------------------------------------
+    const unique = {};
+    const finalRows = [];
+
+    for (const row of asignaciones) {
+      const key = `${row.id_estudiante}-${row.id_materia}`;
+      if (!unique[key]) {
+        unique[key] = true;
+
+        const promedio = (row.nota_parcial_1 + row.nota_parcial_2 + row.nota_final) / 3;
+
+        finalRows.push({
+          ...row,
+          estado_regularidad: promedio >= 4 ? "Regular" : "Libre",
+          estado_materia:
+            promedio >= 7 ? "Aprobada" :
+            promedio >= 4 ? "Reprobada" :
+            "Pendiente"
+        });
+      }
+    }
+
+    await Estudiante_Materia.bulkCreate(finalRows, {
+      ignoreDuplicates: true
+    });
+
+    console.log("📚 Estudiante_Materia generado correctamente.");
+
+    return res?.json?.({ ok: true, insertados: finalRows.length }) || null;
+
+  } catch (err) {
+    console.error("❌ Error:", err);
+    return res?.status?.(500)?.json?.({ error: "Error generando datos" }) || null;
+  }
+}
+
+module.exports = {
+  generarEstudianteMateria
+};
+
+en config:
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize('universidad', 'root', '5614', {
+  host: 'localhost',
+  dialect: 'mysql',
+  logging: false
+});
+
+module.exports = sequelize;
+
+en mi seed:
+seedAll:
+// api/seeds/seedAll.js
+require('dotenv').config();
+const initModels = require('../models');
+const faker = require('faker');
+
+
+(async ()=>{
+  try{
+    const {
+      sequelize,
+      Universidad,
+      Carrera,
+      Estudiante,
+      Estudiante_Carrera,
+      Materia,
+      Correlatividad,
+      Estudiante_Materia
+    } = await initModels();
+
+
+    console.log('Sincronizando tablas (force: true — elimina tablas anteriores)...');
+    await sequelize.sync({ force: true });
+
+
+    // Datos de ejemplo por carrera (subconjunto representativo)
+    const carrerasData = [
+      {
+        key: 'utn_sistemas',
+        nombre: 'Ingenieria en Sistemas (UTN)',
+        universidad: 'UTN',
+        duracion: 5,
+        materias: [
+          {nombre: 'Analisis Matematico I', anio:1, tipo:'Teorica'},
+          {nombre: 'Algebra y Geometria Analitica', anio:1, tipo:'Teorica'},
+          {nombre: 'Algoritmos y Estructuras de Datos', anio:1, tipo:'Teorica'},
+          {nombre: 'Arquitectura de Computadoras', anio:1, tipo:'Teorica'},
+          {nombre: 'Analisis Matematico II', anio:2, tipo:'Teorica'},
+          {nombre: 'Programacion II', anio:2, tipo:'Practica'},
+          {nombre: 'Bases de Datos', anio:2, tipo:'Practica'},
+          {nombre: 'Sistemas Operativos', anio:3, tipo:'Teorica'},
+          {nombre: 'Ingenieria de Software', anio:3, tipo:'Integradora'},
+          {nombre: 'Redes de Computadoras', anio:4, tipo:'Practica'},
+          {nombre: 'Inteligencia Artificial', anio:4, tipo:'Teorica'},
+          {nombre: 'Proyecto Final', anio:5, tipo:'Integradora'}
+        ]
+      },
+      {
+        key: 'uba_medicina',
+        nombre: 'Medicina (UBA)',
+        universidad: 'UBA',
+        duracion: 6,
+        materias: [
+          {nombre: 'Anatomia', anio:1, tipo:'Teorica'},
+          {nombre: 'Bioquimica', anio:1, tipo:'Teorica'},
+          {nombre: 'Fisiologia', anio:2, tipo:'Teorica'},
+          {nombre: 'Microbiologia', anio:3, tipo:'Practica'},
+          {nombre: 'Patologia I', anio:3, tipo:'Teorica'},
+          {nombre: 'Farmacologia I', anio:3, tipo:'Teorica'},
+          {nombre: 'Clinica Medica', anio:4, tipo:'Practica'},
+          {nombre: 'Cirugia', anio:5, tipo:'Practica'},
+          {nombre: 'Pediatria', anio:5, tipo:'Practica'},
+          {nombre: 'Internado Anual', anio:6, tipo:'Integradora'}
+        ]
+      },
+      {
+        key: 'uade_contador',
+        nombre: 'Contador Publico (UADE)',
+        universidad: 'UADE',
+        duracion: 5,
+        materias: [
+          {nombre: 'Introduccion a la Contabilidad', anio:1, tipo:'Teorica'},
+          {nombre: 'Matematica Financiera', anio:1, tipo:'Teorica'},
+          {nombre: 'Derecho Comercial', anio:2, tipo:'Teorica'},
+          {nombre: 'Contabilidad I', anio:2, tipo:'Practica'},
+          {nombre: 'Contabilidad II', anio:3, tipo:'Practica'},
+          {nombre: 'Impuestos a la Renta', anio:3, tipo:'Teorica'},
+          {nombre: 'Auditoria', anio:4, tipo:'Practica'},
+          {nombre: 'Gestion Financiera', anio:4, tipo:'Teorica'},
+          {nombre: 'Trabajo Final / Practica Profesional', anio:5, tipo:'Integradora'}
+        ]
+      }
+    ];
+
+
+    // crear universidades, carreras y materias
+    for(const c of carrerasData){
+      const uni = await Universidad.create({ nombre: c.universidad, telefono: '', direccion: '' });
+      const carrera = await Carrera.create({ nombre: c.nombre, duracion: c.duracion, id_universidad: uni.id_universidad });
+
+
+      // crear materias
+      for(const m of c.materias){
+        await Materia.create({ nombre: m.nombre, anio_cursada: m.anio, tipo: m.tipo, id_carrera: carrera.id_carrera });
+      }
+      // correlatividades: simplificadas posteriores -> anteriores
+      const materias = await Materia.findAll({ where: { id_carrera: carrera.id_carrera }});
+      const porAnio = {};
+      materias.forEach(m => { porAnio[m.anio_cursada] = porAnio[m.anio_cursada] || []; porAnio[m.anio_cursada].push(m); });
+      for(let anio = 1; anio <= 10; anio++){
+        if(!porAnio[anio+1] || !porAnio[anio]) continue;
+        porAnio[anio+1].forEach(mSig => {
+          const base = porAnio[anio][0];
+          if(base){
+            Correlatividad.create({ id_materia: mSig.id_materia, id_materia_correlativa: base.id_materia }).catch(()=>{});
+          }
+        });
+      }
+    }
+
+
+    // listas para nombres/apellidos
+    const nombres = ['Sofia','Valentina','Camila','Martina','Isabella','Mateo','Benjamin','Santiago','Luca','Matias','Juan','Pedro','Lucia','Julieta','Agustina','Nicolas','Facundo','Agustin','Franco','Federico'];
+    const apellidos = ['Gonzalez','Rodriguez','Gomez','Fernandez','Lopez','Martinez','Garcia','Silva','Perez','Diaz','Rossi','Vazquez','Sanchez','Torres','Alvarez'];
+    const carrerasDB = await Carrera.findAll();
+
+
+    console.log('Generando 2000 estudiantes... (esto puede tardar un poco)');
+    for(let i=0;i<2000;i++){
+      const nombre = nombres[Math.floor(Math.random()*nombres.length)];
+      const apellido = apellidos[Math.floor(Math.random()*apellidos.length)];
+      const dni = '' + (30000000 + i); // unico y realista
+      const direccion = faker.address.streetAddress();
+      const telefono = faker.phone.phoneNumber('9########');
+
+
+      const estudiante = await Estudiante.create({ dni, nombre, apellido, direccion, telefono });
+
+
+      // asignar carrera aleatoria
+      const carrera = carrerasDB[Math.floor(Math.random()*carrerasDB.length)];
+      const duracion = carrera.duracion;
+      const anio_actual = Math.floor(Math.random()*duracion) + 1;
+
+
+      await Estudiante_Carrera.create({ id_estudiante: estudiante.id_estudiante, id_carrera: carrera.id_carrera, regularidad: 'Regular', anio_actual });
+
+
+      // historial coherente de materias
+      const materiasCarrera = await Materia.findAll({ where: { id_carrera: carrera.id_carrera }});
+      for(const m of materiasCarrera){
+        if(m.anio_cursada > anio_actual) continue;
+        const aprobado = (m.anio_cursada < anio_actual) ? (Math.random() < 0.85) : (Math.random() < 0.5);
+        const estado = aprobado ? (Math.random() < 0.1 ? 'Promocionada' : 'Aprobada') : 'Reprobada';
+        const nota_final = aprobado ? Math.floor(6 + Math.random()*5) : Math.floor(Math.random()*6);
+        await Estudiante_Materia.create({
+          id_estudiante: estudiante.id_estudiante,
+          id_materia: m.id_materia,
+          anio_cursada: m.anio_cursada,
+          estado_regularidad: 'Regular',
+          nota_parcial_1: null,
+          nota_parcial_2: null,
+          nota_final,
+          estado_materia: aprobado ? 'Aprobada' : 'Reprobada'
+        });
+      }
+    }
+
+
+    console.log('Seed completado: 2000 estudiantes insertados');
+    process.exit(0);
+
+
+  }catch(err){
+    console.error('Error seed:', err);
+    process.exit(1);
+  }
+})();
+
+
+
+
+seedConejos:
+const { Estudiante_Materia, Conejo, TipoConejo } = require('../models');
+
+async function asignarConejosDesdeNotas() {
+  const registros = await Estudiante_Materia.findAll({ raw: true });
+
+  const tipos = await TipoConejo.findAll();
+  const tiposMap = {};
+  tipos.forEach(t => tiposMap[t.nombre] = t.id_tipo);
+
+  const conejos = [];
+
+  for (const r of registros) {
+    const notas = [r.nota_parcial_1, r.nota_parcial_2, r.nota_final];
+
+    for (const nota of notas) {
+      if (nota === null || nota === undefined) continue;
+      const n = Number(nota);
+      if (Number.isNaN(n)) continue;
+
+      let tipo;
+      if (n <= 3) tipo = 'Viejo';
+      else if (n <= 7) tipo = 'Nuevo';
+      else tipo = 'Bebe';
+
+      conejos.push({
+        id_estudiante: r.id_estudiante,
+        id_materia: r.id_materia,
+        id_tipo: tiposMap[tipo],
+        anio_cursada: r.anio_cursada,
+        nota_origen: n
+      });
+    }
+  }
+
+  if (conejos.length > 0) {
+    await Conejo.bulkCreate(conejos, { ignoreDuplicates: true });
+    console.log(`🐇 Se generaron ${conejos.length} conejos correctamente.`);
+  } else {
+    console.log('No hay notas para generar conejos.');
+  }
+}
+
+module.exports = asignarConejosDesdeNotas;
+
+seedTipoConejo:
+const { TipoConejo } = require('../models');
+
+async function inicializarTiposConejo() {
+  const tipos = [
+    { nombre: 'Viejo', descripcion: 'Para notas de 0 a 3' },
+    { nombre: 'Nuevo', descripcion: 'Para notas de 4 a 7' },
+    { nombre: 'Bebe', descripcion: 'Para notas de 8 a 10' }
+  ];
+
+  for (const t of tipos) {
+    await TipoConejo.findOrCreate({ where: { nombre: t.nombre }, defaults: t });
+  }
+
+  console.log('✅ Tipos de conejos inicializados');
+}
+
+module.exports = inicializarTiposConejo;
+
+ y mi index de la api:
+// api/index.js
+const express = require('express');
+const cors = require('cors');
+const { sequelize } = require('./models');
+
+// ---- Controladores existentes ----
+const { generarAlumnos, obtenerAlumnoPorDni, obtenerAlumnoConMaterias } = require('./controllers/alumnoController');
+const { cargarCarreras } = require('./controllers/carreraController');
+const { asignarConejosDesdeNotas, getConejosPorEstudiante, getResumenConejosPorEstudiante } = require('./controllers/conejoController');
+
+// ---- Nuevo controlador para Estudiante_Materia ----
+const { generarEstudianteMateria } = require('./controllers/estudianteMateriaController');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// ---------- Rutas principales ----------
+app.get('/alumnos/:dni', obtenerAlumnoPorDni);
+app.get('/alumnos/:dni/completo', obtenerAlumnoConMaterias);
+
+// ---------- Rutas Conejos ----------
+app.post('/conejos/generar', asignarConejosDesdeNotas);
+app.get('/conejos/:id_estudiante', getConejosPorEstudiante);
+app.get('/conejos/:id_estudiante/resumen', getResumenConejosPorEstudiante);
+
+// ---------- Rutas Estudiante_Materia ----------
+app.post('/estudiante-materia/generar', generarEstudianteMateria);
+
+// ---------- Inicialización ----------
+async function iniciar() {
+  try {
+    console.log(' Sincronizando base de datos...');
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    await sequelize.sync({ force: true }); // ← recrea todo
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+
+    console.log('Tablas sincronizadas correctamente.');
+
+    // Cargar carreras y alumnos
+    await cargarCarreras();
+    await generarAlumnos();
+
+    // Nuevo: Generar Estudiante_Materia automáticamente
+    console.log('Generando Estudiante_Materia...');
+    await generarEstudianteMateria();
+
+    // Ya existentes: conejos basados en notas
+    console.log('Generando conejos automáticos según notas...');
+    await asignarConejosDesdeNotas();
+
+    console.log('Base de datos lista con datos generados (alumnos, carreras, materias, inscripciones y conejos).');
+    app.listen(3001, () => console.log('🌐 Servidor backend corriendo en puerto 3001'));
+  } catch (error) {
+    console.error('Error al iniciar:', error);
+  }
+}
+
+iniciar();
+
+
+Si queres despues te ´paso el frontend, pero por ahora esto y me ayudas a ver errores, rearmarlo y date cuenta que la logica no funciona del todo bien, ya que:
+
+-Una de las condiciones era que haya 23 estduianets por materia y no hay.
+
+- FUNCIONA MAL EL INSERTAR ALumno_materia, ya queno registra años anteriores, ni se fija en la carrera a la hora de poner materias a cada alumno.
+
+-No hay registro de todos los conejos que teine un alumno, por año.
+
+
+/api
+   /src
+      /config
+         db.js
+      /models
+         Estudiante.js
+         Carrera.js
+         Materia.js
+         Estudiante_Carrera.js
+         Estudiante_Materia.js
+         TipoConejo.js
+         Conejo.js
+      /services
+         asignacionService.js
+         validacionService.js
+         conejoService.js
+      /controllers
+         estudianteController.js
+         carreraController.js
+         materiaController.js
+         historialController.js
+         conejoController.js
+      /routes
+         estudianteRoutes.js
+         carreraRoutes.js
+         materiaRoutes.js
+         historialRoutes.js
+         conejoRoutes.js
+      /seeders
+         carrerasSeeder.js
+         materiasSeeder.js
+         estudiantesSeeder.js
+      app.js
+      server.js
