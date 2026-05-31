@@ -4,7 +4,7 @@
 
 ## <img src="https://media.giphy.com/media/juua9i2c2fA0AIp2iq/giphy.gif" width="25"> Introducción
 
-**Hopmark** es un sistema de gestión académica desarrollado para administrar estudiantes, carreras universitarias, materias y calificaciones dentro de una única plataforma.
+**Hopmark** es un sistema de gestión académica desarrollado en JavaScript para administrar estudiantes, carreras universitarias, materias y calificaciones dentro de una única plataforma.
 
 El proyecto busca garantizar la coherencia del recorrido académico de cada estudiante mediante un conjunto de validaciones que controlan la relación entre carrera, año cursado e historial de materias. De esta forma, el sistema puede detectar inconsistencias académicas y mantener registros estructurados y confiables.
 
