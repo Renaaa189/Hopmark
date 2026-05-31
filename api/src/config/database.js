@@ -3,7 +3,7 @@ const { Sequelize } = require("sequelize");
 const sequelize = new Sequelize(
   "universidad",  // DB NAME
   "root",         // DB USER
-  "5614",         // DB PASS
+  "",         // DB PASS
   {
     host: "localhost",
     dialect: "mysql",
