@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="./Documentacion/Imagenes/banner/banner.svg" alt="Hopmark Banner"/>
-</p>
-
-<p align="center">
   <img src="https://capsule-render.vercel.app/api?type=rect&color=0:2f2f2f,100:3a3a3a&height=2" />
 </p>
 
