@@ -25,7 +25,7 @@ Actualmente el sistema contempla distintas carreras universitarias, cada una con
 
 ### Validaciones del sistema
 
-* Verificación de materias correspondientes a cada carrera
+* Verificación de materias correspondientes a cada carrera 
 * Control de progresión académica entre años
 * Detección de inconsistencias en el historial
 * Validación automática de registros académicos
